@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 // cores e formato de texto
 #define ANSI_RESET            "\x1b[0m"  // desativa os efeitos anteriores
@@ -64,11 +65,10 @@ typedef struct{
     int numero_mask;
     int cor;
 } Tabela;
-int ** criaMatriz(int m, int n);
-void liberaMatriz(int ** matriz, int l);
-void mostrarTabuleiro(int l, int c);
-void processarComandoDigitado();
-void novoJogo(char nome[30], char * dificuldade, int ** matrizJogo, int ** matrizMask);
+int ** criaMatriz(int d, int mask);
+void liberaMatriz(int ** matrizJogo, int ** matrizMask, int d);
+void mostrarTabuleiro(int d);
+void novoJogo(char nome[30], int *dimensao, int ***matrizJogo, int ***matrizMask);
 void sair();
 void carregarJogo();
 void salvarJogo();
@@ -77,104 +77,179 @@ void adicionarPosicao();
 void removerPosicao();
 void mostrarDica();
 void resolverJogo();
-void mostrarComandos();
-void processarComando();
+void mostrarComandos(int temJogoAtivo);
+void rodarJogo(char nome[30], int * dimensao, int *** matrizJogo, int *** matrizMask, int temJogoAtivo);
+int gerarNumeroAleatorio(int min, int max);
 
 int main(){
-    int **matrizJogo;
-    int **matrizMask;
-    char dificuldade;
+    srand(time(NULL));
+    int **matrizJogo = NULL;
+    int **matrizMask = NULL;
+    int dimensao = 0;
     char nome[30];
 
-    // printf("\nBem vindo ao Jogo SUMPLETE!\n\n");
-    // mostrarTabuleiro(3, 3);
+    printf(BG_WHITE("\nBem vindo ao Jogo SUMPLETE!\n"));
+    
 
-    novoJogo(nome, &dificuldade, matrizJogo, matrizMask);
-    printf("%s, %c\n", nome, dificuldade);
+    rodarJogo(nome, &dimensao, &matrizJogo, &matrizMask, 0);
+    liberaMatriz(matrizJogo, matrizMask, dimensao);
     return 0;
 }
 
-void novoJogo(char nome[30], char * dificuldade, int ** matrizJogo, int ** matrizMask){
+void novoJogo(char nome[30], int *dimensao, int ***matrizJogo, int ***matrizMask){
+    // Inicializa o gerador com o tempo atual
+    char dificuldade;
     printf("\nDigite o nome do jogador: ");
     scanf("%s", nome);
     printf("\nDigite a dificuldade desejada: (F: 3x3, M: 5x5, D: 7x7) ");
-    scanf(" %c", dificuldade);
+    scanf(" %c", &dificuldade);
+    if(dificuldade == 'f'|| dificuldade == 'F'){
+        *dimensao = 3;
+        *matrizJogo = criaMatriz(3, 0);
+        *matrizMask = criaMatriz(3, 1);
+    }
+    else if(dificuldade == 'm'|| dificuldade == 'M'){
+        *dimensao = 5;
+        *matrizJogo = criaMatriz(5, 0);
+        *matrizMask = criaMatriz(5, 1);
+    }
+    else if(dificuldade == 'd'|| dificuldade == 'D'){
+        *dimensao = 7;
+        *matrizJogo = criaMatriz(7, 0);
+        *matrizMask = criaMatriz(7, 1);
+    }
+    else{
+        printf("\nErro: entrada inválida\nTente novamente");
+    }
+
+}
+int gerarNumeroAleatorio(int min, int max){
+    // Gera um número entre 1 e 9
+    int numAleatorio = (rand() % (max - min + 1)) + min;
+
+    return numAleatorio;
 }
 
-int ** criaMatriz(int l, int c){
+int ** criaMatriz(int d, int mask){
     // função que cria e aloca a matriz dinamicamente
     int **matriz;
-    matriz = (int **)malloc(l * sizeof(int *));
-    for (int i = 0; i < l; i++){
-        matriz[i] = (int *)malloc(c * sizeof(int));
+    matriz = (int **)malloc(d * sizeof(int *));
+    for (int i = 0; i < d; i++){
+        matriz[i] = (int *)malloc(d * sizeof(int));
     }
-    return matriz;
+
+    if(mask){
+        for (int i = 1; i < d - 1; i++){
+            for (int j = 1; j < d - 1; j++){
+                matriz[i][j] = gerarNumeroAleatorio(0, 1);
+            }
+        }
+    }
+    else{
+        for (int i = 1; i < d - 1; i++){
+            for (int j = 1; j < d - 1; j++){
+                matriz[i][j] = gerarNumeroAleatorio(1, 9);
+            }
+        }
+    }
+
+
+        return matriz;
 }
 
-void liberaMatriz(int ** matriz, int l){
-    for (int i = 0; i < l; i++){
-        free(matriz[i]);
+void liberaMatriz(int ** matrizJogo, int ** matrizMask, int d){
+    if (matrizJogo != NULL) {
+        for (int i = 0; i < d; i++){
+            free(matrizJogo[i]);
+        }
+        free(matrizJogo);
     }
-    free(matriz);
+
+    if (matrizMask != NULL) {
+        for (int i = 0; i < d; i++){
+            free(matrizMask[i]);
+        }
+        free(matrizMask);
+    }
 }
 
-void mostrarComandos(){
+void mostrarComandos(int temJogoAtivo){
     // comandos do jogo
-    printf("\nComandos do jogo");
-    printf(BOLD("\najuda:"));
-    printf(BOLD("\nsair:"));
-    printf(BOLD("\nnovo:"));
-    printf(BOLD("\ncarregar:"));
-    printf(BOLD("\nranking:"));
-    printf(BOLD("\nsalvar:"));
-    printf(BOLD("\ndica:"));
-    printf(BOLD("\nresolver:"));
-    printf(BOLD("\nadicionar:"));
-    printf(BOLD("\nremover:\n"));
+    printf(BOLD()"\nComandos do jogo\n");
+    printf(BOLD("\najuda: ")"Exibe os comandos do jogo");
+    printf(BOLD("\nsair: ")"Sair do Jogo");
+    printf(BOLD("\nnovo: ")"Começar um novo jogo");
+    printf(BOLD("\ncarregar: ")" Carregar um jogo salvo em arquivo");
+    printf(BOLD("\nranking: ")"Exibir o ranking");
+    if(temJogoAtivo){
+        printf(BOLD("\nsalvar: ")"Salva o jogo atual");
+        printf(BOLD("\ndica: ")"Marca uma posição no jogo");
+        printf(BOLD("\nresolver: ")"Resolve o jogo atual");
+        printf(BOLD("\nadicionar: ")" <lin> <col>: marca a posição <lin> <col> para entrar na soma");
+        printf(BOLD("\nremover: ")"<lin> <col>: remove a posição da soma");
+    }
 }
 
-void processarComando(){
-    // recebe e armazena o comando digitado
-    char comandoDigitado[20];
-    printf("\nDigite um dos comandos mostrados acima: (digite tudo em minúsculo)");
-    scanf("%s", comandoDigitado);
+void rodarJogo(char nome[30], int * dimensao, int *** matrizJogo, int *** matrizMask, int temJogoAtivo){
+    int continuarJogando = 0;
+    do{
+        // recebe e armazena o comando digitado
+        char comandoDigitado[20];
+        printf(BOLD("\n\nDigite um comando: (digite \"ajuda\" para listar os comandos) "));
+        scanf("%s", comandoDigitado);
+    
+        // verifica qual comando foi digitado e executa a função correspondente
+        if(!strcmp(comandoDigitado, "ajuda")){
+            mostrarComandos(temJogoAtivo);
+            continuarJogando = 1;
+        }
+        else if (!strcmp(comandoDigitado, "sair")){
+            sair();
+            break;
+        }
+        else if (!strcmp(comandoDigitado, "novo")){
+            novoJogo(nome, dimensao, matrizJogo, matrizMask);
+            continuarJogando = 1;
+            temJogoAtivo = 1;
+        }
+        else if (!strcmp(comandoDigitado, "carregar"))
+            carregarJogo();
+        else if(!strcmp(comandoDigitado, "ranking"))
+            mostrarRanking();
+        else if(temJogoAtivo){
+            if (!strcmp(comandoDigitado, "salvar"))
+                salvarJogo();
+            else if(!strcmp(comandoDigitado, "dica"))
+               mostrarDica();
+            else if(!strcmp(comandoDigitado, "resolver"))
+               resolverJogo();
+            else if(!strcmp(comandoDigitado, "adicionar"))
+               adicionarPosicao();
+            else if(!strcmp(comandoDigitado, "remover"))
+               removerPosicao();
+            else{
+            printf("\nComando inválido! digite novamente");
+            continuarJogando = 1;
+            }
+        } else{
+            printf("\nComando inválido! digite novamente");
+            continuarJogando = 1;
+        }
+        printf("%d", *dimensao);
+        mostrarTabuleiro(*dimensao);
 
-    // verifica qual comando foi digitado e executa a função correspondente
-    if(!strcmp(comandoDigitado, "ajuda"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "sair"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "novo"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "carregar"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "ranking"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "salvar"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "dica"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "resolver"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "adicionar"))
-       mostrarComandos();
-    else if(!strcmp(comandoDigitado, "remover"))
-       mostrarComandos();
+    } while (continuarJogando);
 }
 
-void processarComandoDigitado(){
-    char comandoDigitado[20];
-    printf("\nDigite um comando: ");
-    scanf("%s", comandoDigitado);
-}
-
-void mostrarTabuleiro(int l, int c){
-    for (int i = 0; i < l + 2; i++){
-        for (int j = 0; j < c + 2; j++){
+void mostrarTabuleiro(int d){
+    printf("\n\n");
+    for (int i = 0; i < d + 2; i++)
+    {
+        for (int j = 0; j < d + 2; j++){
             // se a linha for par
             if (i % 2 == 0){
                 // se for a primeira coluna
-                if(j == 0 && i <= l && i > 0){
+                if(j == 0 && i <= d && i > 0){
                     printf(BG_YELLOW(BOLD(" %d")), i);;
                 }
                 // se não for a primeira coluna
@@ -182,7 +257,7 @@ void mostrarTabuleiro(int l, int c){
                     //se a coluna for par
                     if(j % 2 == 0){
                         // se for a primeira linha
-                        if(i == 0 && j <= c && j > 0){
+                        if(i == 0 && j <= d && j > 0){
                             printf(BG_YELLOW(BOLD(" %d")), j);
                         }
                         // se não for a primeira linha - numero do jogo aqui
@@ -191,7 +266,7 @@ void mostrarTabuleiro(int l, int c){
                     }
                     // se a coluna for ímpar
                     else{
-                        if(i == 0 && j <= c && j > 0){
+                        if(i == 0 && j <= d && j > 0){
                             printf(YELLOW(" %d"), j);
                         }
                         else
@@ -202,7 +277,7 @@ void mostrarTabuleiro(int l, int c){
             // se a linha for ímpar
             else{
                 // se for a primeira coluna
-                if (j == 0 && i <= l && i > 0)
+                if (j == 0 && i <= d && i > 0)
                 {
                     printf(YELLOW(BOLD(" %d")), i);
                 }
@@ -223,3 +298,12 @@ void mostrarTabuleiro(int l, int c){
     }
     printf("\n");
 }
+
+void sair(){}
+void carregarJogo(){}
+void salvarJogo(){}
+void mostrarRanking(){}
+void adicionarPosicao(){}
+void removerPosicao(){}
+void mostrarDica(){}
+void resolverJogo(){}

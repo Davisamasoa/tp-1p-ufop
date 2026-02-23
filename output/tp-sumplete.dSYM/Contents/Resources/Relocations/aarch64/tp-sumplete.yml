@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/davimachado/Documents/codes/tp-1p-ufop/output/tp-sumplete'
+relocations:     []
+...

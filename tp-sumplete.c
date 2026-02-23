@@ -1,14 +1,15 @@
-// Nome: Davi Samuel Machado Soares
-// Matrícula: 25.2.4160
+// nome: Davi Samuel Machado Soares
+// matricula: 25.2.4160
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 // cores e formato de texto
-#define ANSI_RESET            "\x1b[0m"  // desativa os efeitos anteriores
-#define ANSI_BOLD             "\x1b[1m"  // coloca o texto em negrito
+#define ANSI_RESET            "\x1b[0m"
+#define ANSI_BOLD             "\x1b[1m"
 #define ANSI_COLOR_BLACK      "\x1b[30m"
 #define ANSI_COLOR_RED        "\x1b[31m"
 #define ANSI_COLOR_GREEN      "\x1b[32m"
@@ -33,7 +34,6 @@
 #define RED(string)        ANSI_COLOR_RED        string ANSI_RESET
 #define GREEN(string)      ANSI_COLOR_GREEN      string ANSI_RESET
 #define YELLOW(string)     ANSI_COLOR_YELLOW     string ANSI_RESET
-#define BLUE(string)       ANSI_COLOR_BLUE       string ANSI_RESET
 #define MAGENTA(string)    ANSI_COLOR_MAGENTA    string ANSI_RESET
 #define CYAN(string)       ANSI_COLOR_CYAN       string ANSI_RESET
 #define WHITE(string)      ANSI_COLOR_WHITE      string ANSI_RESET
@@ -42,175 +42,179 @@
 #define BG_RED(string)     ANSI_BG_COLOR_RED     string ANSI_RESET
 #define BG_GREEN(string)   ANSI_BG_COLOR_GREEN   string ANSI_RESET
 #define BG_YELLOW(string)  ANSI_BG_COLOR_YELLOW  string ANSI_RESET
-#define BG_BLUE(string)    ANSI_BG_COLOR_BLUE    string ANSI_RESET
 #define BG_MAGENTA(string) ANSI_BG_COLOR_MAGENTA string ANSI_RESET
 #define BG_CYAN(string)    ANSI_BG_COLOR_CYAN    string ANSI_RESET
 #define BG_WHITE(string)   ANSI_BG_COLOR_WHITE   string ANSI_RESET
 
 // caracteres uteis para tabelas
-#define TAB_HOR "\u2501" // ━ (horizontal)
-#define TAB_VER "\u2503" // ┃ (vertical)
-#define TAB_TL  "\u250F" // ┏ (top-left)
-#define TAB_ML  "\u2523" // ┣ (middle-left)
-#define TAB_BL  "\u2517" // ┗ (bottom-left)
-#define TAB_TJ  "\u2533" // ┳ (top-join)
-#define TAB_MJ  "\u254B" // ╋ (middle-join)
-#define TAB_BJ  "\u253B" // ┻ (bottom-join)
-#define TAB_TR  "\u2513" // ┓ (top-right)
-#define TAB_MR  "\u252B" // ┫ (middle-right)
-#define TAB_BR  "\u251B" // ┛ (bottom-right)
+#define TAB_HOR "\u2501" 
+#define TAB_VER "\u2503" 
+#define TAB_TL  "\u250F" 
+#define TAB_ML  "\u2523" 
+#define TAB_BL  "\u2517" 
+#define TAB_TJ  "\u2533" 
+#define TAB_MJ  "\u254B" 
+#define TAB_BJ  "\u253B" 
+#define TAB_TR  "\u2513" 
+#define TAB_MR  "\u252B" 
+#define TAB_BR  "\u251B" 
    
 typedef struct{
     int numero;
     int numero_mask;
     int cor;
 } Tabela;
-int ** criaMatriz(int d, int mask);
-void liberaMatriz(int ** matrizJogo, int ** matrizMask, int d);
-void mostrarTabuleiro(int d);
-void novoJogo(char nome[30], int *dimensao, int ***matrizJogo, int ***matrizMask);
+
+typedef struct {
+    char nome[30];
+    int tempo;
+} Jogador;
+
+// prototipos das funcoes
+Tabela ** criaMatriz(int d);
+void liberaMatriz(Tabela ** matriz, int d);
+void mostrarTabuleiro(int d, Tabela ** matriz);
+void novoJogo(char nome[30], int *dimensao, Tabela ***matriz);
 void sair();
 void carregarJogo();
 void salvarJogo();
 void mostrarRanking();
-void adicionarPosicao();
-void removerPosicao();
-void mostrarDica();
+int adicionarRanking(char *nomeJogador, int tempoGasto);
+void adicionarPosicao(int d, Tabela ** matriz);
+void removerPosicao(int d, Tabela ** matriz);
+void mostrarDica(Tabela **matriz, int dimensao);
 void resolverJogo();
 void mostrarComandos(int temJogoAtivo);
-void rodarJogo(char nome[30], int * dimensao, int *** matrizJogo, int *** matrizMask, int temJogoAtivo);
+void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz);
 int gerarNumeroAleatorio(int min, int max);
+int calcularSomaLinhaAlvo(int d, Tabela **matriz, int linha);
+int calcularSomaColunaAlvo(int d, Tabela **matriz, int coluna);
+int calcularSomaLinhaAtual(int d, Tabela **matriz, int linha);
+int calcularSomaColunaAtual(int d, Tabela **matriz, int coluna);
+int verificarVitoria(int d, Tabela **matriz);
 
 int main(){
     srand(time(NULL));
-    int **matrizJogo = NULL;
-    int **matrizMask = NULL;
+    Tabela **matriz = NULL;
     int dimensao = 0;
-    char nome[30];
+    char nome[30] = "";
 
     printf(BG_WHITE("\nBem vindo ao Jogo SUMPLETE!\n"));
     
-
-    rodarJogo(nome, &dimensao, &matrizJogo, &matrizMask, 0);
-    liberaMatriz(matrizJogo, matrizMask, dimensao);
+    // passamos o endereco da matriz
+    rodarJogo(nome, &dimensao, &matriz);
+    
+    liberaMatriz(matriz, dimensao);
     return 0;
 }
 
-void novoJogo(char nome[30], int *dimensao, int ***matrizJogo, int ***matrizMask){
-    // Inicializa o gerador com o tempo atual
+int gerarNumeroAleatorio(int min, int max){
+    return (rand() % (max - min + 1)) + min;
+}
+
+Tabela ** criaMatriz(int d){
+    // aloca a matriz de structs
+    Tabela **matriz = (Tabela **)malloc(d * sizeof(Tabela *));
+    for (int i = 0; i < d; i++){
+        matriz[i] = (Tabela *)malloc(d * sizeof(Tabela));
+    }
+
+    // preenche todas as propriedades de uma vez
+    for (int i = 0; i < d; i++){        
+        for (int j = 0; j < d; j++){    
+            matriz[i][j].numero = gerarNumeroAleatorio(1, 9);
+            matriz[i][j].numero_mask = gerarNumeroAleatorio(0, 1);
+            matriz[i][j].cor = 0; // 0 padrao 1 adicionado 2 removido
+        }
+    }
+    return matriz;
+}
+
+void liberaMatriz(Tabela ** matriz, int d){
+    if (matriz != NULL) {
+        for (int i = 0; i < d; i++){
+            free(matriz[i]);
+        }
+        free(matriz);
+    }
+}
+
+void novoJogo(char nome[30], int *dimensao, Tabela ***matriz){
     char dificuldade;
     printf("\nDigite o nome do jogador: ");
     scanf("%s", nome);
     printf("\nDigite a dificuldade desejada: (F: 3x3, M: 5x5, D: 7x7) ");
     scanf(" %c", &dificuldade);
+    
+    // libera a matriz anterior se o usuario pedir novo no meio do jogo
+    if (*matriz != NULL) {
+        liberaMatriz(*matriz, *dimensao);
+    }
+
     if(dificuldade == 'f'|| dificuldade == 'F'){
         *dimensao = 3;
-        *matrizJogo = criaMatriz(3, 0);
-        *matrizMask = criaMatriz(3, 1);
+        *matriz = criaMatriz(3);
     }
     else if(dificuldade == 'm'|| dificuldade == 'M'){
         *dimensao = 5;
-        *matrizJogo = criaMatriz(5, 0);
-        *matrizMask = criaMatriz(5, 1);
+        *matriz = criaMatriz(5);
     }
     else if(dificuldade == 'd'|| dificuldade == 'D'){
         *dimensao = 7;
-        *matrizJogo = criaMatriz(7, 0);
-        *matrizMask = criaMatriz(7, 1);
+        *matriz = criaMatriz(7);
     }
     else{
-        printf("\nErro: entrada inválida\nTente novamente");
-    }
-
-}
-int gerarNumeroAleatorio(int min, int max){
-    // Gera um número entre 1 e 9
-    int numAleatorio = (rand() % (max - min + 1)) + min;
-
-    return numAleatorio;
-}
-
-int ** criaMatriz(int d, int mask){
-    // função que cria e aloca a matriz dinamicamente
-    int **matriz;
-    matriz = (int **)malloc(d * sizeof(int *));
-    for (int i = 0; i < d; i++){
-        matriz[i] = (int *)malloc(d * sizeof(int));
-    }
-
-    if(mask){
-        for (int i = 1; i < d - 1; i++){
-            for (int j = 1; j < d - 1; j++){
-                matriz[i][j] = gerarNumeroAleatorio(0, 1);
-            }
-        }
-    }
-    else{
-        for (int i = 1; i < d - 1; i++){
-            for (int j = 1; j < d - 1; j++){
-                matriz[i][j] = gerarNumeroAleatorio(1, 9);
-            }
-        }
-    }
-
-
-        return matriz;
-}
-
-void liberaMatriz(int ** matrizJogo, int ** matrizMask, int d){
-    if (matrizJogo != NULL) {
-        for (int i = 0; i < d; i++){
-            free(matrizJogo[i]);
-        }
-        free(matrizJogo);
-    }
-
-    if (matrizMask != NULL) {
-        for (int i = 0; i < d; i++){
-            free(matrizMask[i]);
-        }
-        free(matrizMask);
+        printf("\n\nErro: entrada inválida\nTente novamente\n");
     }
 }
 
 void mostrarComandos(int temJogoAtivo){
-    // comandos do jogo
-    printf(BOLD()"\nComandos do jogo\n");
-    printf(BOLD("\najuda: ")"Exibe os comandos do jogo");
-    printf(BOLD("\nsair: ")"Sair do Jogo");
-    printf(BOLD("\nnovo: ")"Começar um novo jogo");
-    printf(BOLD("\ncarregar: ")" Carregar um jogo salvo em arquivo");
-    printf(BOLD("\nranking: ")"Exibir o ranking");
+    printf(BOLD("\nComandos do jogo\n"));
+    printf(BOLD("\najuda: ") "Exibe os comandos do jogo");
+    printf(BOLD("\nsair: ") "Sair do Jogo");
+    printf(BOLD("\nnovo: ") "Começar um novo jogo");
+    printf(BOLD("\ncarregar: ") "Carregar um jogo salvo em arquivo");
+    printf(BOLD("\nranking: ") "Exibir o ranking");
     if(temJogoAtivo){
-        printf(BOLD("\nsalvar: ")"Salva o jogo atual");
-        printf(BOLD("\ndica: ")"Marca uma posição no jogo");
-        printf(BOLD("\nresolver: ")"Resolve o jogo atual");
-        printf(BOLD("\nadicionar: ")" <lin> <col>: marca a posição <lin> <col> para entrar na soma");
-        printf(BOLD("\nremover: ")"<lin> <col>: remove a posição da soma");
+        printf(BOLD("\nsalvar: ") "Salva o jogo atual");
+        printf(BOLD("\ndica: ") "Marca uma posição no jogo");
+        printf(BOLD("\nresolver: ") "Resolve o jogo atual");
+        printf(BOLD("\nadicionar: ") "<lin> <col>: marca a posição <lin> <col> para entrar na soma");
+        printf(BOLD("\nremover: ") "<lin> <col>: remove a posição da soma");
     }
+    printf("\n");
 }
 
-void rodarJogo(char nome[30], int * dimensao, int *** matrizJogo, int *** matrizMask, int temJogoAtivo){
-    int continuarJogando = 0;
+void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
+    int continuarJogando = 1; 
+    int temJogoAtivo = 0;
+    
+    // variaveis para calcular o tempo
+    struct timeval inicio, fim;
+
     do{
-        // recebe e armazena o comando digitado
         char comandoDigitado[20];
-        printf(BOLD("\n\nDigite um comando: (digite \"ajuda\" para listar os comandos) "));
+        if(strcmp("", nome)){
+            printf(BOLD("\n\n %s, digite um comando: (digite \"ajuda\" para listar os comandos) "), nome);
+        }
+        else{
+            printf(BOLD("\n\nDigite um comando: (digite \"ajuda\" para listar os comandos) "));
+        }
         scanf("%s", comandoDigitado);
     
-        // verifica qual comando foi digitado e executa a função correspondente
         if(!strcmp(comandoDigitado, "ajuda")){
             mostrarComandos(temJogoAtivo);
-            continuarJogando = 1;
         }
         else if (!strcmp(comandoDigitado, "sair")){
             sair();
-            break;
+            continuarJogando = 0; 
         }
         else if (!strcmp(comandoDigitado, "novo")){
-            novoJogo(nome, dimensao, matrizJogo, matrizMask);
-            continuarJogando = 1;
-            temJogoAtivo = 1;
+            novoJogo(nome, dimensao, matriz);
+            if (*dimensao > 0) {
+                temJogoAtivo = 1; 
+                gettimeofday(&inicio, 0); // dispara o cronometro
+            }
         }
         else if (!strcmp(comandoDigitado, "carregar"))
             carregarJogo();
@@ -220,90 +224,339 @@ void rodarJogo(char nome[30], int * dimensao, int *** matrizJogo, int *** matriz
             if (!strcmp(comandoDigitado, "salvar"))
                 salvarJogo();
             else if(!strcmp(comandoDigitado, "dica"))
-               mostrarDica();
+               mostrarDica(*matriz, *dimensao);
             else if(!strcmp(comandoDigitado, "resolver"))
                resolverJogo();
-            else if(!strcmp(comandoDigitado, "adicionar"))
-               adicionarPosicao();
-            else if(!strcmp(comandoDigitado, "remover"))
-               removerPosicao();
+            else if(!strcmp(comandoDigitado, "adicionar") || !strcmp(comandoDigitado, "remover")){
+                
+                // executa a acao baseada no comando
+                if (!strcmp(comandoDigitado, "adicionar")) adicionarPosicao(*dimensao, *matriz);
+                else removerPosicao(*dimensao, *matriz);
+
+                // mostra o tabuleiro atualizado apos a jogada
+                mostrarTabuleiro(*dimensao, *matriz);
+
+                // verifica a vitoria
+                if(verificarVitoria(*dimensao, *matriz)){
+                    // para o cronometro
+                    gettimeofday(&fim, 0);
+                    long sec = fim.tv_sec - inicio.tv_sec;
+                    long microsec = fim.tv_usec - inicio.tv_usec;
+                    double passado = sec + microsec * 1e-6;
+                    int tempoInteiro = (int)passado; // converte para o ranking
+
+                    printf("\n\n"BG_GREEN(BOLD("Parabéns %s, você ganhou!"))"\n\n", nome);
+                    
+                    // adiciona no ranking e mostra
+                    int posicao = adicionarRanking(nome, tempoInteiro);
+                    printf(GREEN("Tempo de jogo: %.3f segundos (Registrado como %ds).\n"), passado, tempoInteiro);
+                    if (posicao != -1) printf(GREEN("Você entrou para o Top 10 na %dº posição!\n"), posicao);
+                    else printf(YELLOW("\nSeu tempo não foi suficiente para entrar no Top 10.\n"));
+
+                    temJogoAtivo = 0; // desativa o jogo atual
+                    
+                    // laco para validar a resposta de jogar novamente
+                    int respostaValida = 0;
+                    do {
+                        char resposta[30];
+                        printf("\nDeseja jogar novamente? (sim/nao) ");
+                        scanf("%s", resposta);
+                        
+                        if(!strcmp(resposta, "sim") || !strcmp(resposta, "Sim") || !strcmp(resposta, "SIM")){
+                            novoJogo(nome, dimensao, matriz); 
+                            if (*dimensao > 0) {
+                                temJogoAtivo = 1;
+                                gettimeofday(&inicio, 0); // reinicia o cronometro para o novo jogo
+                            }
+                            if (temJogoAtivo) mostrarTabuleiro(*dimensao, *matriz); 
+                            respostaValida = 1;
+                        }
+                        else if (!strcmp(resposta, "nao") || !strcmp(resposta, "Nao") || !strcmp(resposta, "NAO")) {
+                            sair();
+                            continuarJogando = 0; 
+                            respostaValida = 1;
+                        }
+                        else {
+                            printf(RED("\nEntrada inválida! digite sim ou nao\n"));
+                        }
+                    } while(!respostaValida);
+                }
+            }
             else{
-            printf("\nComando inválido! digite novamente");
-            continuarJogando = 1;
+                printf("\nComando inválido! digite novamente");
             }
         } else{
-            printf("\nComando inválido! digite novamente");
-            continuarJogando = 1;
+            printf("\nComando inválido ou jogo não iniciado! digite novamente");
         }
-        printf("%d", *dimensao);
-        mostrarTabuleiro(*dimensao);
+        
+        // mostra o tabuleiro se tiver um jogo ativo e se nao acabou de interagir
+        if (temJogoAtivo && continuarJogando && strcmp(comandoDigitado, "adicionar") && strcmp(comandoDigitado, "remover")) {
+            mostrarTabuleiro(*dimensao, *matriz);
+        }
 
     } while (continuarJogando);
 }
 
-void mostrarTabuleiro(int d){
+// calculo de somas acessando as structs
+int calcularSomaLinhaAlvo(int d, Tabela **matriz, int linha) {
+    int soma = 0;
+    for (int i = 0; i < d; i++) {
+        soma += matriz[linha][i].numero * matriz[linha][i].numero_mask;
+    }
+    return soma;
+}
+
+int calcularSomaColunaAlvo(int d, Tabela **matriz, int coluna) {
+    int soma = 0;
+    for (int i = 0; i < d; i++) {
+        soma += matriz[i][coluna].numero * matriz[i][coluna].numero_mask;
+    }
+    return soma;
+}
+
+// calcula a soma atual baseada nas escolhas do jogador
+int calcularSomaLinhaAtual(int d, Tabela **matriz, int linha) {
+    int soma = 0;
+    for (int j = 0; j < d; j++) {
+        if (matriz[linha][j].cor == 0 || matriz[linha][j].cor == 1) { // 0 padrao 1 adicionado
+            soma += matriz[linha][j].numero;
+        }
+    }
+    return soma;
+}
+
+int calcularSomaColunaAtual(int d, Tabela **matriz, int coluna) {
+    int soma = 0;
+    for (int i = 0; i < d; i++) {
+        if (matriz[i][coluna].cor == 0 || matriz[i][coluna].cor == 1) { // 0 padrao 1 adicionado
+            soma += matriz[i][coluna].numero;
+        }
+    }
+    return soma;
+}
+
+// verifica se todas as linhas e colunas bateram com o alvo
+int verificarVitoria(int d, Tabela **matriz) {
+    for (int i = 0; i < d; i++) {
+        if (calcularSomaLinhaAtual(d, matriz, i) != calcularSomaLinhaAlvo(d, matriz, i)) {
+            return 0; 
+        }
+    }
+    for (int j = 0; j < d; j++) {
+        if (calcularSomaColunaAtual(d, matriz, j) != calcularSomaColunaAlvo(d, matriz, j)) {
+            return 0; 
+        }
+    }
+    return 1; 
+}
+
+void mostrarTabuleiro(int d, Tabela **matriz){
     printf("\n\n");
-    for (int i = 0; i < d + 2; i++)
-    {
-        for (int j = 0; j < d + 2; j++){
-            // se a linha for par
-            if (i % 2 == 0){
-                // se for a primeira coluna
-                if(j == 0 && i <= d && i > 0){
-                    printf(BG_YELLOW(BOLD(" %d")), i);;
-                }
-                // se não for a primeira coluna
-                else{
-                    //se a coluna for par
-                    if(j % 2 == 0){
-                        // se for a primeira linha
-                        if(i == 0 && j <= d && j > 0){
-                            printf(BG_YELLOW(BOLD(" %d")), j);
-                        }
-                        // se não for a primeira linha - numero do jogo aqui
-                        else
-                            printf(BG_YELLOW("  "));
-                    }
-                    // se a coluna for ímpar
-                    else{
-                        if(i == 0 && j <= d && j > 0){
-                            printf(YELLOW(" %d"), j);
-                        }
-                        else
-                         printf("  ");
-                    }
-                }
-            } 
-            // se a linha for ímpar
-            else{
-                // se for a primeira coluna
-                if (j == 0 && i <= d && i > 0)
-                {
-                    printf(YELLOW(BOLD(" %d")), i);
-                }
-                // se não for a primeira coluna
-                else{
-                    // se a coluna for ímpar
-                    if(j % 2 != 0){
-                            printf(BG_YELLOW("  "));
-                    }
-                    // se a coluna for par
-                    else{
-                        printf("  ");
-                    }    
-                }
+
+    // imprime os indices das colunas no topo
+    printf("    ");
+    for (int j = 0; j < d; j++) {
+        printf(YELLOW(BOLD(" %d  ")), j + 1);
+    }
+    printf("\n");
+
+    // imprime a borda superior
+    printf("   ");
+    printf("%s", TAB_TL);
+    for (int j = 0; j < d; j++) {
+        printf("%s%s%s", TAB_HOR, TAB_HOR, TAB_HOR);
+        if (j < d - 1) printf("%s", TAB_TJ);
+        else printf("%s\n", TAB_TR);
+    }
+
+    // imprime as linhas da matriz e os separadores
+    for (int i = 0; i < d; i++) {
+        
+        printf(YELLOW(BOLD(" %d ")), i + 1); 
+        printf("%s", TAB_VER);
+        
+        // imprime os numeros do jogo mudando a cor conforme o estado da struct
+        for (int j = 0; j < d; j++) {
+            if (matriz[i][j].cor == 1) { 
+                printf(GREEN(BOLD(" %d ")), matriz[i][j].numero);
+            } else if (matriz[i][j].cor == 2) { 
+                printf(RED(" %d "), matriz[i][j].numero);
+            } else { 
+                printf(" %d ", matriz[i][j].numero);
+            }
+            printf("%s", TAB_VER);
+        }
+        
+        // calcula e imprime a soma alvo da linha no final da grade
+        int somaLinha = calcularSomaLinhaAlvo(d, matriz, i);
+        printf(WHITE(BOLD(" %2d\n")), somaLinha);
+
+        // imprime o separador do meio ou a borda inferior
+        printf("   ");
+        if (i < d - 1) {
+            // se nao for a ultima linha
+            printf("%s", TAB_ML);
+            for (int j = 0; j < d; j++) {
+                printf("%s%s%s", TAB_HOR, TAB_HOR, TAB_HOR);
+                if (j < d - 1) printf("%s", TAB_MJ);
+                else printf("%s\n", TAB_MR);
+            }
+        } else {
+            // se for a ultima linha
+            printf("%s", TAB_BL);
+            for (int j = 0; j < d; j++) {
+                printf("%s%s%s", TAB_HOR, TAB_HOR, TAB_HOR);
+                if (j < d - 1) printf("%s", TAB_BJ);
+                else printf("%s\n", TAB_BR);
             }
         }
-        printf("\n");
     }
+
+    // calcula e imprime as somas alvo das colunas no rodape
+    printf("    ");
+    for (int j = 0; j < d; j++) {
+        int somaCol = calcularSomaColunaAlvo(d, matriz, j);
+        printf(WHITE(BOLD(" %2d ")), somaCol);
+    }
+    printf("\n\n");
+}
+
+void adicionarPosicao(int d, Tabela ** matriz) {
+    int linha, coluna;
+    printf("\nDigite a linha e a coluna para ADICIONAR (ex: 1 2): ");
+    scanf("%d %d", &linha, &coluna);
+    
+    // verifica se as coordenadas estao dentro do tabuleiro
+    if (linha > 0 && linha <= d && coluna > 0 && coluna <= d) {
+        matriz[linha - 1][coluna - 1].cor = 1; 
+        printf(GREEN("\n\nPosição %d %d adicionada à soma!\n"), linha, coluna);
+    } else {
+        printf(RED("\n\nErro: Coordenadas fora do tabuleiro!\n"));
+    }
+}
+
+void removerPosicao(int d, Tabela ** matriz) {
+    int linha, coluna;
+    printf("\n\nDigite a linha e a coluna para REMOVER (ex: 1 2): ");
+    scanf("%d %d", &linha, &coluna);
+    
+    // verifica se as coordenadas estao dentro do tabuleiro
+    if (linha > 0 && linha <= d && coluna > 0 && coluna <= d) {
+        matriz[linha - 1][coluna - 1].cor = 2; 
+        printf(RED("\n\nPosição %d %d removida da soma!\n"), linha, coluna);
+    } else {
+        printf(RED("\n\nErro: Coordenadas fora do tabuleiro!\n"));
+    }
+}
+
+void mostrarRanking() {
+    FILE *arquivo = fopen("sumplete.rnk", "r");
+    if (arquivo == NULL) {
+        printf(RED("\nNenhum ranking encontrado ainda. Jogue uma partida para criar!\n"));
+        return;
+    }
+
+    printf(BOLD("\n"BG_BLUE("--- RANKING DOS JOGADORES (TOP 10) ---")"\n"));
+    printf(BOLD(" Posição  | Tempo (s) | Nome\n"));
+    printf(" ━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━━\n");
+    
+    Jogador j;
+    int posicao = 1;
+    
+    while (fscanf(arquivo, "%s %d", j.nome, &j.tempo) == 2 && posicao <= 10) {
+        printf(" %2dº      | %4d      | %s\n", posicao, j.tempo, j.nome);
+        posicao++;
+    }
+    
+    fclose(arquivo);
     printf("\n");
 }
 
-void sair(){}
+int adicionarRanking(char *nomeJogador, int tempoGasto) {
+    Jogador ranking[11]; 
+    int qtd = 0;
+
+    FILE *arquivo = fopen("sumplete.rnk", "r");
+    if (arquivo != NULL) {
+        while (fscanf(arquivo, "%s %d", ranking[qtd].nome, &ranking[qtd].tempo) == 2) {
+            qtd++;
+            if (qtd == 10) break; 
+        }
+        fclose(arquivo);
+    }
+
+    strcpy(ranking[qtd].nome, nomeJogador);
+    ranking[qtd].tempo = tempoGasto;
+    qtd++;
+
+    // ordena do menor para o maior
+    for (int i = 0; i < qtd - 1; i++) {
+        for (int j = 0; j < qtd - i - 1; j++) {
+            if (ranking[j].tempo > ranking[j + 1].tempo) {
+                Jogador temp = ranking[j];
+                ranking[j] = ranking[j + 1];
+                ranking[j + 1] = temp;
+            }
+        }
+    }
+
+    if (qtd > 10) qtd = 10;
+
+    int posicaoFinal = -1;
+    for(int i = 0; i < qtd; i++) {
+        if(strcmp(ranking[i].nome, nomeJogador) == 0 && ranking[i].tempo == tempoGasto) {
+            posicaoFinal = i + 1;
+            break;
+        }
+    }
+
+    arquivo = fopen("sumplete.rnk", "w");
+    if (arquivo != NULL) {
+        for (int i = 0; i < qtd; i++) {
+            fprintf(arquivo, "%s %d\n", ranking[i].nome, ranking[i].tempo);
+        }
+        fclose(arquivo);
+    } else {
+        printf(RED("\nErro ao salvar o arquivo sumplete.rnk!\n"));
+    }
+
+    return posicaoFinal;
+}
+
+void sair(){
+    printf("\nSaindo do jogo...\n");
+}
+
 void carregarJogo(){}
 void salvarJogo(){}
-void mostrarRanking(){}
-void adicionarPosicao(){}
-void removerPosicao(){}
-void mostrarDica(){}
+void mostrarDica(Tabela **matriz, int dimensao) {
+    int dicas = 0;
+
+    // 1. varre a matriz contando quantas posicoes corretas ainda nao foram pintadas
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            if (matriz[i][j].numero_mask == 1 && matriz[i][j].cor != 1) {
+                dicas++;
+            }
+        }
+    }
+
+    // 2. se o contador continuou zerado, é pq nao tem mais o que revelar
+    if (dicas == 0) {
+        printf(YELLOW("\nTodos os números necessários já foram adicionados\n"));
+        return;
+    }
+
+    // 3. se tem celula escondida, sorteia ate acertar uma
+    while (1) {
+        int linAleatoria = rand() % dimensao;
+        int colAleatoria = rand() % dimensao;
+        
+        if (matriz[linAleatoria][colAleatoria].numero_mask == 1 && matriz[linAleatoria][colAleatoria].cor != 1) {
+            matriz[linAleatoria][colAleatoria].cor = 1;
+            printf(GREEN("\nDica: Posição %d %d revelada!\n"), linAleatoria + 1, colAleatoria + 1);
+            break; // sai do laco
+        }
+    }
+}
 void resolverJogo(){}

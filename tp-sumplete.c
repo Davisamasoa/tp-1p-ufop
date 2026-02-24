@@ -91,8 +91,6 @@ int calcularSomaColunaAlvo(int d, Tabela **matriz, int coluna);
 int calcularSomaLinhaAtual(int d, Tabela **matriz, int linha);
 int calcularSomaColunaAtual(int d, Tabela **matriz, int coluna);
 int verificarVitoria(int d, Tabela **matriz);
-
-// Prototipos atualizados para as novas funcoes com nomeBase
 void carregarJogo(Tabela ***matriz, int *dimensao, char *nome, struct timeval *inicio, int *temJogoAtivo, char *nomeBase);
 void salvarJogo(Tabela **matriz, int dimensao, char *nome, struct timeval inicio, char *nomeBase);
 void resolverJogo(int dimensao, Tabela **matriz);
@@ -205,7 +203,7 @@ void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
             printf(BOLD("\n\nDigite um comando: (digite \"ajuda\" para listar os comandos) "));
         }
         
-        // Pega a primeira palavra digitada
+        // pega a primeira palavra digitada
         scanf("%s", comandoDigitado);
     
         if(!strcmp(comandoDigitado, "ajuda")){
@@ -224,7 +222,7 @@ void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
         }
         else if (!strcmp(comandoDigitado, "carregar")){
             char nomeSave[50];
-            scanf("%s", nomeSave); // Pega a segunda palavra digitada
+            scanf("%s", nomeSave); // pega a segunda palavra digitada
             carregarJogo(matriz, dimensao, nome, &inicio, &temJogoAtivo, nomeSave);
         }
         else if(!strcmp(comandoDigitado, "ranking"))
@@ -232,7 +230,7 @@ void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
         else if(temJogoAtivo){
             if (!strcmp(comandoDigitado, "salvar")){
                 char nomeSave[50];
-                scanf("%s", nomeSave); // Pega a segunda palavra digitada
+                scanf("%s", nomeSave); // pega a segunda palavra digitada
                 salvarJogo(*matriz, *dimensao, nome, inicio, nomeSave);
             }
             else if(!strcmp(comandoDigitado, "dica"))
@@ -330,7 +328,7 @@ int calcularSomaColunaAlvo(int d, Tabela **matriz, int coluna) {
 int calcularSomaLinhaAtual(int d, Tabela **matriz, int linha) {
     int soma = 0;
     for (int j = 0; j < d; j++) {
-        if (matriz[linha][j].cor == 0 || matriz[linha][j].cor == 1) { // 0 padrao 1 adicionado
+        if (matriz[linha][j].cor == 0 || matriz[linha][j].cor == 1) { // 0 padrao, 1 adicionado
             soma += matriz[linha][j].numero;
         }
     }
@@ -340,7 +338,7 @@ int calcularSomaLinhaAtual(int d, Tabela **matriz, int linha) {
 int calcularSomaColunaAtual(int d, Tabela **matriz, int coluna) {
     int soma = 0;
     for (int i = 0; i < d; i++) {
-        if (matriz[i][coluna].cor == 0 || matriz[i][coluna].cor == 1) { // 0 padrao 1 adicionado
+        if (matriz[i][coluna].cor == 0 || matriz[i][coluna].cor == 1) { // 0 padrao, 1 adicionado
             soma += matriz[i][coluna].numero;
         }
     }
@@ -403,7 +401,7 @@ void mostrarTabuleiro(int d, Tabela **matriz){
         int somaLinhaAlvo = calcularSomaLinhaAlvo(d, matriz, i);
         int somaLinhaAtual = calcularSomaLinhaAtual(d, matriz, i);
         
-        // se bateu com o esperado, fica branco forte, senao fica cinza/escuro
+        // se bateu com o esperado, fica branco forte, senao fica cinza escuro
         if (somaLinhaAlvo == somaLinhaAtual) {
             printf(WHITE(BOLD(" %2d\n")), somaLinhaAlvo);
         } else {
@@ -668,7 +666,7 @@ void salvarJogo(Tabela **matriz, int dimensao, char *nome, struct timeval inicio
     }
     fprintf(f, "%d\n", m);
 
-    // escreve os detalhes das jogadas ('a' = adicionado/1, 'r' = removido/2)
+    // escreve os detalhes das jogadas ('a' = adicionado = 1, 'r' = removido = 2)
     for (int i = 0; i < dimensao; i++) {
         for (int j = 0; j < dimensao; j++) {
             if (matriz[i][j].cor == 1) {

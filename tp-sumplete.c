@@ -15,6 +15,7 @@
 #define ANSI_COLOR_GREEN      "\x1b[32m"
 #define ANSI_COLOR_YELLOW     "\x1b[33m"
 #define ANSI_COLOR_BLUE       "\x1b[34m"
+#define ANSI_COLOR_GRAY       "\x1b[90m"
 #define ANSI_COLOR_MAGENTA    "\x1b[35m"
 #define ANSI_COLOR_CYAN       "\x1b[36m"
 #define ANSI_COLOR_WHITE      "\x1b[37m"
@@ -29,6 +30,7 @@
 
 // macros para facilitar o uso
 #define BOLD(string)       ANSI_BOLD             string ANSI_RESET
+#define GRAY(string)       ANSI_COLOR_GRAY       string ANSI_RESET
 #define BLACK(string)      ANSI_COLOR_BLACK      string ANSI_RESET
 #define BLUE(string)       ANSI_COLOR_BLUE       string ANSI_RESET
 #define RED(string)        ANSI_COLOR_RED        string ANSI_RESET
@@ -76,14 +78,11 @@ void liberaMatriz(Tabela ** matriz, int d);
 void mostrarTabuleiro(int d, Tabela ** matriz);
 void novoJogo(char nome[30], int *dimensao, Tabela ***matriz);
 void sair();
-void carregarJogo();
-void salvarJogo();
 void mostrarRanking();
 int adicionarRanking(char *nomeJogador, int tempoGasto);
 void adicionarPosicao(int d, Tabela ** matriz);
 void removerPosicao(int d, Tabela ** matriz);
 void mostrarDica(Tabela **matriz, int dimensao);
-void resolverJogo();
 void mostrarComandos(int temJogoAtivo);
 void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz);
 int gerarNumeroAleatorio(int min, int max);
@@ -92,6 +91,11 @@ int calcularSomaColunaAlvo(int d, Tabela **matriz, int coluna);
 int calcularSomaLinhaAtual(int d, Tabela **matriz, int linha);
 int calcularSomaColunaAtual(int d, Tabela **matriz, int coluna);
 int verificarVitoria(int d, Tabela **matriz);
+
+// Prototipos atualizados para as novas funcoes com nomeBase
+void carregarJogo(Tabela ***matriz, int *dimensao, char *nome, struct timeval *inicio, int *temJogoAtivo, char *nomeBase);
+void salvarJogo(Tabela **matriz, int dimensao, char *nome, struct timeval inicio, char *nomeBase);
+void resolverJogo(int dimensao, Tabela **matriz);
 
 int main(){
     srand(time(NULL));
@@ -173,10 +177,10 @@ void mostrarComandos(int temJogoAtivo){
     printf(BOLD("\najuda: ") "Exibe os comandos do jogo");
     printf(BOLD("\nsair: ") "Sair do Jogo");
     printf(BOLD("\nnovo: ") "Começar um novo jogo");
-    printf(BOLD("\ncarregar: ") "Carregar um jogo salvo em arquivo");
+    printf(BOLD("\ncarregar: ") "<nome>: carrega um save (ex: carregar jogo)");
     printf(BOLD("\nranking: ") "Exibir o ranking");
     if(temJogoAtivo){
-        printf(BOLD("\nsalvar: ") "Salva o jogo atual");
+        printf(BOLD("\nsalvar: ") "<nome>: salva o jogo atual (ex: salvar jogo)");
         printf(BOLD("\ndica: ") "Marca uma posição no jogo");
         printf(BOLD("\nresolver: ") "Resolve o jogo atual");
         printf(BOLD("\nadicionar: ") "<lin> <col>: marca a posição <lin> <col> para entrar na soma");
@@ -200,6 +204,8 @@ void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
         else{
             printf(BOLD("\n\nDigite um comando: (digite \"ajuda\" para listar os comandos) "));
         }
+        
+        // Pega a primeira palavra digitada
         scanf("%s", comandoDigitado);
     
         if(!strcmp(comandoDigitado, "ajuda")){
@@ -216,17 +222,23 @@ void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
                 gettimeofday(&inicio, 0); // dispara o cronometro
             }
         }
-        else if (!strcmp(comandoDigitado, "carregar"))
-            carregarJogo();
+        else if (!strcmp(comandoDigitado, "carregar")){
+            char nomeSave[50];
+            scanf("%s", nomeSave); // Pega a segunda palavra digitada
+            carregarJogo(matriz, dimensao, nome, &inicio, &temJogoAtivo, nomeSave);
+        }
         else if(!strcmp(comandoDigitado, "ranking"))
             mostrarRanking();
         else if(temJogoAtivo){
-            if (!strcmp(comandoDigitado, "salvar"))
-                salvarJogo();
+            if (!strcmp(comandoDigitado, "salvar")){
+                char nomeSave[50];
+                scanf("%s", nomeSave); // Pega a segunda palavra digitada
+                salvarJogo(*matriz, *dimensao, nome, inicio, nomeSave);
+            }
             else if(!strcmp(comandoDigitado, "dica"))
                mostrarDica(*matriz, *dimensao);
             else if(!strcmp(comandoDigitado, "resolver"))
-               resolverJogo();
+               resolverJogo(*dimensao, *matriz);
             else if(!strcmp(comandoDigitado, "adicionar") || !strcmp(comandoDigitado, "remover")){
                 
                 // executa a acao baseada no comando
@@ -255,7 +267,7 @@ void rodarJogo(char nome[30], int * dimensao, Tabela *** matriz){
 
                     temJogoAtivo = 0; // desativa o jogo atual
                     
-                    // laco para validar a resposta de jogar novamente
+                    // laço para validar a resposta de jogar novamente
                     int respostaValida = 0;
                     do {
                         char resposta[30];
@@ -387,9 +399,16 @@ void mostrarTabuleiro(int d, Tabela **matriz){
             printf("%s", TAB_VER);
         }
         
-        // calcula e imprime a soma alvo da linha no final da grade
-        int somaLinha = calcularSomaLinhaAlvo(d, matriz, i);
-        printf(WHITE(BOLD(" %2d\n")), somaLinha);
+        // calcula as somas da linha
+        int somaLinhaAlvo = calcularSomaLinhaAlvo(d, matriz, i);
+        int somaLinhaAtual = calcularSomaLinhaAtual(d, matriz, i);
+        
+        // se bateu com o esperado, fica branco forte, senao fica cinza/escuro
+        if (somaLinhaAlvo == somaLinhaAtual) {
+            printf(WHITE(BOLD(" %2d\n")), somaLinhaAlvo);
+        } else {
+            printf(GRAY(" %2d\n"), somaLinhaAlvo);
+        }
 
         // imprime o separador do meio ou a borda inferior
         printf("   ");
@@ -415,8 +434,15 @@ void mostrarTabuleiro(int d, Tabela **matriz){
     // calcula e imprime as somas alvo das colunas no rodape
     printf("    ");
     for (int j = 0; j < d; j++) {
-        int somaCol = calcularSomaColunaAlvo(d, matriz, j);
-        printf(WHITE(BOLD(" %2d ")), somaCol);
+        int somaColAlvo = calcularSomaColunaAlvo(d, matriz, j);
+        int somaColAtual = calcularSomaColunaAtual(d, matriz, j);
+        
+        // se bateu com o esperado, fica branco forte, senao fica cinza/escuro
+        if (somaColAlvo == somaColAtual) {
+            printf(WHITE(BOLD(" %2d ")), somaColAlvo);
+        } else {
+            printf(GRAY(" %2d "), somaColAlvo);
+        }
     }
     printf("\n\n");
 }
@@ -527,12 +553,10 @@ void sair(){
     printf("\nSaindo do jogo...\n");
 }
 
-void carregarJogo(){}
-void salvarJogo(){}
 void mostrarDica(Tabela **matriz, int dimensao) {
     int dicas = 0;
 
-    // 1. varre a matriz contando quantas posicoes corretas ainda nao foram pintadas
+    // varre a matriz contando quantas posicoes corretas ainda nao foram pintadas
     for (int i = 0; i < dimensao; i++) {
         for (int j = 0; j < dimensao; j++) {
             if (matriz[i][j].numero_mask == 1 && matriz[i][j].cor != 1) {
@@ -541,13 +565,13 @@ void mostrarDica(Tabela **matriz, int dimensao) {
         }
     }
 
-    // 2. se o contador continuou zerado, é pq nao tem mais o que revelar
+    // se o contador continuou zerado, é pq nao tem mais o que revelar
     if (dicas == 0) {
         printf(YELLOW("\nTodos os números necessários já foram adicionados\n"));
         return;
     }
 
-    // 3. se tem celula escondida, sorteia ate acertar uma
+    // se tem celula escondida, sorteia ate acertar uma
     while (1) {
         int linAleatoria = rand() % dimensao;
         int colAleatoria = rand() % dimensao;
@@ -559,4 +583,181 @@ void mostrarDica(Tabela **matriz, int dimensao) {
         }
     }
 }
-void resolverJogo(){}
+
+void resolverJogo(int dimensao, Tabela **matriz) {
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            if (matriz[i][j].numero_mask == 1) {
+                matriz[i][j].cor = 1; // Deve ser adicionado
+            } else {
+                matriz[i][j].cor = 2; // Deve ser removido
+            }
+        }
+    }
+    printf(GREEN("\nO jogo foi resolvido automaticamente!\n"));
+}
+
+void salvarJogo(Tabela **matriz, int dimensao, char *nome, struct timeval inicio, char *nomeBase) {
+    char nomeArquivo[100];
+    
+    // Adiciona o .sum ao nome que o usuario digitou
+    strcpy(nomeArquivo, nomeBase);
+    strcat(nomeArquivo, ".sum");
+
+    FILE *f = fopen(nomeArquivo, "w");
+    if (!f) {
+        printf(RED("\nErro ao criar arquivo!\n"));
+        return;
+    }
+
+    // calcula o tempo decorrido no momento do save
+    struct timeval fim;
+    gettimeofday(&fim, 0);
+    int tempoDecorrido = (int)(fim.tv_sec - inicio.tv_sec);
+
+    // escreve a dimensão (d)
+    fprintf(f, "%d\n", dimensao);
+
+    // escreve a matriz com os números
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            fprintf(f, "%d", matriz[i][j].numero);
+            if (j < dimensao - 1) fprintf(f, " ");
+        }
+        fprintf(f, "\n");
+    }
+
+    // escreve a soma das linhas
+    for (int i = 0; i < dimensao; i++) {
+        fprintf(f, "%d", calcularSomaLinhaAlvo(dimensao, matriz, i));
+        if (i < dimensao - 1) fprintf(f, " ");
+    }
+    fprintf(f, "\n");
+
+    // escreve a soma das colunas
+    for (int j = 0; j < dimensao; j++) {
+        fprintf(f, "%d", calcularSomaColunaAlvo(dimensao, matriz, j));
+        if (j < dimensao - 1) fprintf(f, " ");
+    }
+    fprintf(f, "\n");
+
+    // conta e escreve a quantidade de células a remover para formar a máscara (v)
+    int v = 0;
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            if (matriz[i][j].numero_mask == 0) v++;
+        }
+    }
+    fprintf(f, "%d\n", v);
+
+    // escreve as posições (linha e coluna) das células removidas da máscara (1-based index)
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            if (matriz[i][j].numero_mask == 0) {
+                fprintf(f, "%d %d\n", i + 1, j + 1);
+            }
+        }
+    }
+
+    // conta e escreve as jogadas do jogador (m)
+    int m = 0;
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            if (matriz[i][j].cor == 1 || matriz[i][j].cor == 2) m++;
+        }
+    }
+    fprintf(f, "%d\n", m);
+
+    // escreve os detalhes das jogadas ('a' = adicionado/1, 'r' = removido/2)
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = 0; j < dimensao; j++) {
+            if (matriz[i][j].cor == 1) {
+                fprintf(f, "a %d %d\n", i + 1, j + 1);
+            } else if (matriz[i][j].cor == 2) {
+                fprintf(f, "r %d %d\n", i + 1, j + 1);
+            }
+        }
+    }
+
+    // escreve nome e tempo
+    fprintf(f, "%s\n", nome);
+    fprintf(f, "%d\n", tempoDecorrido);
+
+    fclose(f);
+    printf(GREEN("\nJogo salvo com sucesso em '%s'!\n"), nomeArquivo);
+}
+
+void carregarJogo(Tabela ***matriz, int *dimensao, char *nome, struct timeval *inicio, int *temJogoAtivo, char *nomeBase) {
+    char nomeArquivo[100];
+    
+    // Adiciona o .sum ao nome que o usuario digitou
+    strcpy(nomeArquivo, nomeBase);
+    strcat(nomeArquivo, ".sum");
+
+    FILE *f = fopen(nomeArquivo, "r");
+    if (!f) {
+        printf(RED("\nErro ao abrir o arquivo '%s'. Verifique se ele existe!\n"), nomeArquivo);
+        return;
+    }
+
+    int d;
+    if (fscanf(f, "%d", &d) != 1) {
+        printf(RED("\nErro na leitura do arquivo!\n"));
+        fclose(f);
+        return;
+    }
+
+    // limpa jogo atual para recarregar o novo
+    if (*matriz != NULL) liberaMatriz(*matriz, *dimensao);
+    
+    *dimensao = d;
+    *matriz = criaMatriz(d); 
+    *temJogoAtivo = 1;
+
+    // lendo a matriz de números e resetando o estado base da struct
+    for (int i = 0; i < d; i++) {
+        for (int j = 0; j < d; j++) {
+            fscanf(f, "%d", &(*matriz)[i][j].numero);
+            (*matriz)[i][j].numero_mask = 1; // Tudo começa fazendo parte da máscara...
+            (*matriz)[i][j].cor = 0;         // ...sem marcações do usuário
+        }
+    }
+
+    // pula a linha das somas 
+    int temp;
+    for (int i = 0; i < d; i++) fscanf(f, "%d", &temp); 
+    for (int j = 0; j < d; j++) fscanf(f, "%d", &temp); 
+
+    // lendo a máscara de remoções (v)
+    int v;
+    fscanf(f, "%d", &v);
+    for (int k = 0; k < v; k++) {
+        int l, c;
+        fscanf(f, "%d %d", &l, &c);
+        (*matriz)[l - 1][c - 1].numero_mask = 0; // Configura as máscaras corretamente
+    }
+
+    // lendo jogadas feitas (m)
+    int m;
+    fscanf(f, "%d", &m);
+    for (int k = 0; k < m; k++) {
+        char tipo;
+        int l, c;
+        fscanf(f, " %c %d %d", &tipo, &l, &c); 
+        if (tipo == 'a') (*matriz)[l - 1][c - 1].cor = 1;
+        else if (tipo == 'r') (*matriz)[l - 1][c - 1].cor = 2;
+    }
+
+    // recuperando nome e manipulando o relógio
+    int tempoGasto;
+    fscanf(f, "%s", nome);
+    fscanf(f, "%d", &tempoGasto);
+
+    fclose(f);
+
+    // ajusta o relógio interno
+    gettimeofday(inicio, 0);
+    inicio->tv_sec -= tempoGasto;
+
+    printf(GREEN("\nJogo de %s carregado com sucesso!\n"), nome);
+}

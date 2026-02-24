@@ -571,7 +571,7 @@ void mostrarDica(Tabela **matriz, int dimensao) {
         return;
     }
 
-    // se tem celula escondida, sorteia ate acertar uma
+    // se tem posição correta escondida, sorteia ate acertar uma
     while (1) {
         int linAleatoria = rand() % dimensao;
         int colAleatoria = rand() % dimensao;
@@ -588,9 +588,9 @@ void resolverJogo(int dimensao, Tabela **matriz) {
     for (int i = 0; i < dimensao; i++) {
         for (int j = 0; j < dimensao; j++) {
             if (matriz[i][j].numero_mask == 1) {
-                matriz[i][j].cor = 1; // Deve ser adicionado
+                matriz[i][j].cor = 1; // deve ser adicionado
             } else {
-                matriz[i][j].cor = 2; // Deve ser removido
+                matriz[i][j].cor = 2; // deve ser removido
             }
         }
     }
@@ -641,7 +641,7 @@ void salvarJogo(Tabela **matriz, int dimensao, char *nome, struct timeval inicio
     }
     fprintf(f, "\n");
 
-    // conta e escreve a quantidade de células a remover para formar a máscara (v)
+    // conta e escreve a quantidade de posições a remover para formar a máscara (v)
     int v = 0;
     for (int i = 0; i < dimensao; i++) {
         for (int j = 0; j < dimensao; j++) {
@@ -650,7 +650,7 @@ void salvarJogo(Tabela **matriz, int dimensao, char *nome, struct timeval inicio
     }
     fprintf(f, "%d\n", v);
 
-    // escreve as posições (linha e coluna) das células removidas da máscara (1-based index)
+    // escreve as posições (linha e coluna) das posições removidas da máscara (1-based index)
     for (int i = 0; i < dimensao; i++) {
         for (int j = 0; j < dimensao; j++) {
             if (matriz[i][j].numero_mask == 0) {
@@ -718,8 +718,8 @@ void carregarJogo(Tabela ***matriz, int *dimensao, char *nome, struct timeval *i
     for (int i = 0; i < d; i++) {
         for (int j = 0; j < d; j++) {
             fscanf(f, "%d", &(*matriz)[i][j].numero);
-            (*matriz)[i][j].numero_mask = 1; // Tudo começa fazendo parte da máscara...
-            (*matriz)[i][j].cor = 0;         // ...sem marcações do usuário
+            (*matriz)[i][j].numero_mask = 1;
+            (*matriz)[i][j].cor = 0;        
         }
     }
 
